@@ -1,0 +1,10 @@
+build/bin
+node_modules
+frontend/dist
+.gocache
+release
+docs
+KEVA.zip
+document.txt
+phase.txt
+plan.md
