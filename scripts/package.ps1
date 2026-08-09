@@ -11,6 +11,12 @@ $zipPath = Join-Path $projectRoot "KEVA.zip"
 $frontendRoot = Join-Path $projectRoot "frontend"
 $exeSource = Join-Path $projectRoot "build\bin\KEVA.exe"
 $exeSourceWithoutExtension = Join-Path $projectRoot "build\bin\KEVA"
+$rootIcon = Join-Path $projectRoot "icon.ico"
+$rootPngIcon = Join-Path $projectRoot "appicon.png"
+$wailsWindowsIcon = Join-Path $projectRoot "build\windows\icon.ico"
+$wailsAppIcon = Join-Path $projectRoot "build\appicon.png"
+$binResources = Join-Path $projectRoot "build\bin\resources"
+$binAssets = Join-Path $binResources "assets"
 
 function Assert-InProject {
     param([string]$Path)
@@ -22,12 +28,38 @@ function Assert-InProject {
     }
 }
 
+function Assert-NoVaultData {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $configPath = Join-Path $Path "config\config.json"
+    $databasePath = Join-Path $Path "data\keva.db"
+    if ((Test-Path -LiteralPath $configPath) -or (Test-Path -LiteralPath $databasePath)) {
+        throw "Refusing to delete release directory because vault data exists under: $Path"
+    }
+}
+
 Assert-InProject $releaseRoot
 Assert-InProject $zipPath
+
+if (Test-Path -LiteralPath $rootIcon) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $wailsWindowsIcon) | Out-Null
+    Copy-Item -LiteralPath $rootIcon -Destination $wailsWindowsIcon -Force
+}
+if (Test-Path -LiteralPath $rootPngIcon) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $wailsAppIcon) | Out-Null
+    Copy-Item -LiteralPath $rootPngIcon -Destination $wailsAppIcon -Force
+}
 
 Push-Location $frontendRoot
 try {
     npm.cmd run build
+    if ($LASTEXITCODE -ne 0) {
+        throw "Frontend build failed with exit code $LASTEXITCODE"
+    }
 }
 finally {
     Pop-Location
@@ -36,7 +68,10 @@ finally {
 Push-Location $projectRoot
 try {
     $env:GOCACHE = Join-Path $projectRoot ".gocache"
-    wails build -clean -s -o KEVA.exe
+    wails build -s -o KEVA.exe
+    if ($LASTEXITCODE -ne 0) {
+        throw "Wails build failed with exit code $LASTEXITCODE"
+    }
 }
 finally {
     Pop-Location
@@ -50,8 +85,18 @@ if (-not (Test-Path -LiteralPath $exeSource)) {
     throw "Build output not found: $exeSource"
 }
 
-if (Test-Path -LiteralPath $releaseRoot) {
-    Remove-Item -LiteralPath $releaseRoot -Recurse -Force
+New-Item -ItemType Directory -Force -Path $binResources | Out-Null
+New-Item -ItemType Directory -Force -Path $binAssets | Out-Null
+if (Test-Path -LiteralPath $wailsWindowsIcon) {
+    Copy-Item -LiteralPath $wailsWindowsIcon -Destination (Join-Path $binResources "icon.ico") -Force
+}
+if (Test-Path -LiteralPath $wailsAppIcon) {
+    Copy-Item -LiteralPath $wailsAppIcon -Destination (Join-Path $binAssets "appicon.png") -Force
+}
+
+if (Test-Path -LiteralPath $appRoot) {
+    Assert-NoVaultData $appRoot
+    Remove-Item -LiteralPath $appRoot -Recurse -Force
 }
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
@@ -63,7 +108,10 @@ foreach ($dir in @("config", "data", "logs", "resources", "resources\assets", "l
 }
 
 Copy-Item -LiteralPath $exeSource -Destination (Join-Path $appRoot "KEVA.exe") -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot "build\windows\icon.ico") -Destination (Join-Path $appRoot "resources\icon.ico") -Force
+Copy-Item -LiteralPath $wailsWindowsIcon -Destination (Join-Path $appRoot "resources\icon.ico") -Force
+if (Test-Path -LiteralPath $wailsAppIcon) {
+    Copy-Item -LiteralPath $wailsAppIcon -Destination (Join-Path $appRoot "resources\assets\appicon.png") -Force
+}
 
 @"
 KEVA - KEy VAult

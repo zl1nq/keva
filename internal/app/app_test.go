@@ -94,6 +94,32 @@ func TestAutoLockIfIdle(t *testing.T) {
 	}
 }
 
+func TestTrayIconPathsPreferRuntimeResources(t *testing.T) {
+	paths := config.Paths{
+		Root:      filepath.Join("D:", "Projects", "keva", "build", "bin"),
+		Resources: filepath.Join("D:", "Projects", "keva", "build", "bin", "resources"),
+	}
+
+	got := trayIconPaths(paths)
+	want := []string{
+		filepath.Join(paths.Resources, "icon.ico"),
+		filepath.Join(paths.Resources, "assets", "appicon.png"),
+		filepath.Join(paths.Root, "icon.ico"),
+		filepath.Join(paths.Root, "appicon.png"),
+		filepath.Clean(filepath.Join(paths.Root, "..", "..", "icon.ico")),
+		filepath.Clean(filepath.Join(paths.Root, "..", "..", "appicon.png")),
+	}
+
+	if len(got) != len(want) {
+		t.Fatalf("got %d paths want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("path %d got %q want %q", i, got[i], want[i])
+		}
+	}
+}
+
 func TestAccountAccessRequiresUnlockedVault(t *testing.T) {
 	testApp := New()
 	paths := testPaths(t)

@@ -1,7 +1,8 @@
 package windows
 
 type TrayCallbacks struct {
-	Open func()
-	Lock func()
-	Quit func()
+	IconPaths []string
+	Open      func()
+	Lock      func()
+	Quit      func()
 }

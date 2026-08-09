@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -89,7 +90,8 @@ func (a *App) Startup(ctx context.Context) {
 		a.hotkey = hotkey
 	}
 	a.tray = windows.StartTray(windows.TrayCallbacks{
-		Open: a.OpenWindow,
+		IconPaths: trayIconPaths(paths),
+		Open:      a.OpenWindow,
 		Lock: func() {
 			_ = a.Lock()
 		},
@@ -530,6 +532,17 @@ func (a *App) handleQuickSearchHotkey() {
 	}
 	runtime.WindowShow(a.ctx)
 	runtime.EventsEmit(a.ctx, "shortcut:quick-search")
+}
+
+func trayIconPaths(paths config.Paths) []string {
+	return []string{
+		filepath.Join(paths.Resources, "icon.ico"),
+		filepath.Join(paths.Resources, "assets", "appicon.png"),
+		filepath.Join(paths.Root, "icon.ico"),
+		filepath.Join(paths.Root, "appicon.png"),
+		filepath.Clean(filepath.Join(paths.Root, "..", "..", "icon.ico")),
+		filepath.Clean(filepath.Join(paths.Root, "..", "..", "appicon.png")),
+	}
 }
 
 func argon2Params(cfg config.Argon2Config) vaultcrypto.Argon2Params {

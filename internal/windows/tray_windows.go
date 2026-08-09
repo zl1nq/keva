@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"os"
 	"sync"
 
 	"github.com/getlantern/systray"
@@ -18,6 +19,15 @@ func StartTray(callbacks TrayCallbacks) *Tray {
 	go systray.Run(func() {
 		systray.SetTitle("KEVA")
 		systray.SetTooltip("KEVA local password vault")
+		for _, iconPath := range callbacks.IconPaths {
+			if iconPath == "" {
+				continue
+			}
+			if icon, err := os.ReadFile(iconPath); err == nil {
+				systray.SetIcon(icon)
+				break
+			}
+		}
 
 		open := systray.AddMenuItem("Open KEVA", "Show KEVA")
 		lock := systray.AddMenuItem("Lock", "Lock the vault")

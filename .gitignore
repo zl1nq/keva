@@ -2,9 +2,13 @@ build/bin
 node_modules
 frontend/dist
 .gocache
+.idea
+
 release
 docs
 KEVA.zip
+KEVA
+
 document.txt
 phase.txt
 plan.md
