@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -177,9 +176,6 @@ func scanAccount(scanner accountScanner) (AccountRecord, error) {
 		&record.CreatedAt,
 		&record.UpdatedAt,
 	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return AccountRecord{}, sql.ErrNoRows
-		}
 		return AccountRecord{}, err
 	}
 	return record, nil

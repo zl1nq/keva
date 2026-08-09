@@ -41,22 +41,38 @@ func GeneratePassword(options PasswordOptions) (string, error) {
 	alphabet := strings.Join(charsets, "")
 	out := make([]byte, options.Length)
 	for i := 0; i < options.Length; i++ {
-		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		index, err := randomIndex(len(alphabet))
 		if err != nil {
 			return "", err
 		}
-		out[i] = alphabet[index.Int64()]
+		out[i] = alphabet[index]
 	}
 
 	for i, charset := range charsets {
-		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		index, err := randomIndex(len(charset))
 		if err != nil {
 			return "", err
 		}
-		out[i] = charset[index.Int64()]
+		out[i] = charset[index]
+	}
+
+	for i := len(out) - 1; i > 0; i-- {
+		j, err := randomIndex(i + 1)
+		if err != nil {
+			return "", err
+		}
+		out[i], out[j] = out[j], out[i]
 	}
 
 	return string(out), nil
+}
+
+func randomIndex(length int) (int, error) {
+	index, err := rand.Int(rand.Reader, big.NewInt(int64(length)))
+	if err != nil {
+		return 0, err
+	}
+	return int(index.Int64()), nil
 }
 
 func selectedCharsets(options PasswordOptions) []string {

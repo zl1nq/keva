@@ -38,11 +38,6 @@ type AccountSummary = {
   updated_at: number;
 };
 
-type AccountDetail = AccountSummary & {
-  password: string;
-  note: string;
-};
-
 type AccountInput = {
   title: string;
   username: string;
@@ -242,7 +237,6 @@ const masterPassword = ref('');
 const searchInput = ref<HTMLInputElement | null>(null);
 const search = ref('');
 const accounts = ref<AccountSummary[]>([]);
-const selected = ref<AccountDetail | null>(null);
 const editingId = ref('');
 const activeView = ref<ViewMode>('accounts');
 const editorMode = ref<EditorMode>('none');
@@ -327,7 +321,6 @@ async function refreshState() {
       await Promise.all([loadAccounts(), loadSettings()]);
     } else {
       accounts.value = [];
-      selected.value = null;
       resetForm();
     }
   } catch (err) {
@@ -398,7 +391,6 @@ function openNewAccount() {
   queueActivity();
   clearMessages();
   editingId.value = '';
-  selected.value = null;
   revealPassword.value = false;
   editorMode.value = 'new';
   Object.assign(accountForm, emptyAccount());
@@ -408,13 +400,13 @@ async function selectAccount(id: string) {
   queueActivity();
   clearMessages();
   try {
-    selected.value = await GetAccount(id);
+    const account = await GetAccount(id);
     Object.assign(accountForm, {
-      title: selected.value.title,
-      username: selected.value.username,
-      password: selected.value.password,
-      url: selected.value.url,
-      note: selected.value.note,
+      title: account.title,
+      username: account.username,
+      password: account.password,
+      url: account.url,
+      note: account.note,
     });
     editingId.value = id;
     editorMode.value = 'edit';
@@ -462,36 +454,41 @@ async function removeAccount() {
 }
 
 async function generateIntoForm() {
-  queueActivity();
-  clearMessages();
-  try {
-    accountForm.password = await GeneratePassword(passwordOptions);
+  const password = await generatePassword();
+  if (password) {
+    accountForm.password = password;
     revealPassword.value = true;
-    notice.value = t.value.passwordGenerated;
-  } catch (err) {
-    showError(err);
   }
 }
 
 async function generateStandalonePassword() {
+  const password = await generatePassword();
+  if (password) {
+    generatedPassword.value = password;
+  }
+}
+
+async function generatePassword() {
   queueActivity();
   clearMessages();
   try {
-    generatedPassword.value = await GeneratePassword(passwordOptions);
+    const password = await GeneratePassword(passwordOptions);
     notice.value = t.value.passwordGenerated;
+    return password;
   } catch (err) {
     showError(err);
+    return '';
   }
 }
 
 function useGeneratedPassword() {
   queueActivity();
   if (!generatedPassword.value) return;
-  accountForm.password = generatedPassword.value;
   activeView.value = 'accounts';
   if (editorMode.value === 'none') {
     openNewAccount();
   }
+  accountForm.password = generatedPassword.value;
   revealPassword.value = true;
   notice.value = t.value.passwordAdded;
 }
@@ -502,11 +499,12 @@ async function copySelectedPassword() {
 
   clearMessages();
   try {
-    await CopyPassword(editingId.value);
-    copiedAccountId.value = editingId.value;
+    const accountId = editingId.value;
+    await CopyPassword(accountId);
+    copiedAccountId.value = accountId;
     notice.value = t.value.passwordCopied;
     window.setTimeout(() => {
-      if (copiedAccountId.value === editingId.value) {
+      if (copiedAccountId.value === accountId) {
         copiedAccountId.value = '';
       }
     }, 2500);
@@ -531,7 +529,6 @@ async function saveSettings() {
 
 function resetForm() {
   editingId.value = '';
-  selected.value = null;
   editorMode.value = 'none';
   revealPassword.value = false;
   Object.assign(accountForm, emptyAccount());
